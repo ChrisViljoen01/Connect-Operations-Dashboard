@@ -119,3 +119,52 @@ normal migrations do not silently clear current operational data.
 ```
 
 Database setup and the storage model are documented in [db/README.md](db/README.md).
+
+## Deployment (Docker / a public link)
+
+The Windows workflow above (`.venv` + Windows Credential Manager) remains the
+primary supported setup. For running the dashboard somewhere other than a
+Windows workstation — a shared server, a VM, or a GitHub Codespace so it is
+reachable by link — a self-contained Docker Compose stack is included:
+`Dockerfile`, `docker-compose.yml`, and `scripts/setup_database.sh` (a Linux
+port of `setup_database.ps1`). It provisions PostgreSQL, applies every
+migration automatically, and starts the app.
+
+```bash
+cp .env.example .env   # fill in OPUS_DB_APP_PASSWORD and OPUS_PG_ADMIN_PASSWORD
+docker compose up -d --build
+```
+
+Open `http://<host>:8091`. Two settings matter specifically for non-Windows
+hosting:
+
+- **`OPUS_SOURCE_EMAIL` / `OPUS_SOURCE_PASSWORD`** — Windows Credential
+  Manager does not exist in a container, so the OPUS source login falls back
+  to these environment variables when set. Entering the login through the
+  Extraction screen still works and is tried first wherever Credential
+  Manager is actually available.
+- **`OPUS_APP_ACCESS_PASSWORD`** — the app has no login screen by default,
+  which is fine on a trusted internal network but not once it is reachable
+  by a public link. Setting this enables a `/login` gate (shared password,
+  timing-safe check) in front of every page. Leave it unset only for
+  internal-network deployments. `OPUS_APP_STORAGE_SECRET` signs session
+  cookies and is derived automatically from the access password if not set
+  explicitly; set it explicitly for a stable, long-lived deployment.
+
+### Getting an actual shareable link
+
+Building the container image does not, by itself, put a URL on the internet —
+that requires a host. Two practical options:
+
+1. **GitHub Codespaces** (`.devcontainer/devcontainer.json` is included) —
+   open this repository as a Codespace, let the Compose stack start, then use
+   the **Ports** panel to set port `8091`'s visibility to *Public* to get a
+   shareable `https://…app.github.dev` URL. Set `OPUS_APP_ACCESS_PASSWORD`
+   first if you do this, since the port is then open to anyone with the link.
+2. **Your own server or cloud VM** — run the `docker compose up -d --build`
+   command above on any Docker-capable host you control, then point a domain
+   or reverse proxy (for TLS) at port 8091.
+
+Neither this repository nor an automated session can provision cloud hosting
+or a tunnel on your behalf without credentials for that provider; the steps
+above are what turns the container into a link once you choose where it runs.

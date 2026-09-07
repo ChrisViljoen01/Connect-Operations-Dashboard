@@ -1,0 +1,71 @@
+# Self-contained deployment: PostgreSQL, an automatic migration run, and the
+# dashboard itself. Suitable for any Docker host (a VM, a cloud container
+# service, etc.) - not only Windows.
+#
+# Quick start:
+#   1. Copy .env.example to .env and fill in OPUS_DB_APP_PASSWORD (24+ chars)
+#      and, for a public/shared deployment, OPUS_APP_ACCESS_PASSWORD.
+#   2. docker compose up -d --build
+#   3. Open http://<host>:8091 (or the mapped port) and set the OPUS source
+#      login in the Extraction screen - or provide OPUS_SOURCE_EMAIL and
+#      OPUS_SOURCE_PASSWORD as a non-interactive fallback (see .env.example).
+#
+# The database password is never printed to logs. OPUS_PG_ADMIN_PASSWORD is
+# only used once, to bootstrap roles; it can be any strong password local to
+# this deployment.
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${OPUS_PG_ADMIN_PASSWORD:?set OPUS_PG_ADMIN_PASSWORD}
+      POSTGRES_DB: postgres
+    volumes:
+      - opus_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  migrate:
+    image: postgres:17-alpine
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      OPUS_DB_HOST: db
+      OPUS_DB_PORT: "5432"
+      OPUS_PG_ADMIN_PASSWORD: ${OPUS_PG_ADMIN_PASSWORD:?set OPUS_PG_ADMIN_PASSWORD}
+      OPUS_DB_APP_PASSWORD: ${OPUS_DB_APP_PASSWORD:?set OPUS_DB_APP_PASSWORD}
+    volumes:
+      - ./db:/app/db:ro
+      - ./scripts/setup_database.sh:/app/scripts/setup_database.sh:ro
+    entrypoint: ["sh", "/app/scripts/setup_database.sh"]
+
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      OPUS_DB_HOST: db
+      OPUS_DB_PORT: "5432"
+      OPUS_DB_NAME: connect_logistics_ops
+      OPUS_DB_USER: connect_ops_app
+      OPUS_DB_APP_PASSWORD: ${OPUS_DB_APP_PASSWORD:?set OPUS_DB_APP_PASSWORD}
+      OPUS_API_URL: ${OPUS_API_URL:-https://appsvc.opus4business.com/api/}
+      OPUS_SOURCE_EMAIL: ${OPUS_SOURCE_EMAIL:-}
+      OPUS_SOURCE_PASSWORD: ${OPUS_SOURCE_PASSWORD:-}
+      OPUS_APP_ACCESS_PASSWORD: ${OPUS_APP_ACCESS_PASSWORD:-}
+      OPUS_APP_STORAGE_SECRET: ${OPUS_APP_STORAGE_SECRET:-}
+      OPUS_EXTRACT_FROM: ${OPUS_EXTRACT_FROM:-2026-06-29}
+      OPUS_AUTO_SYNC: ${OPUS_AUTO_SYNC:-true}
+      OPUS_APP_PORT: "8091"
+    ports:
+      - "${OPUS_APP_PORT:-8091}:8091"
+
+volumes:
+  opus_db_data:

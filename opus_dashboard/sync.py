@@ -159,11 +159,28 @@ class WorkflowSelection:
 
 
 class OpusCredentialStore:
-    def __init__(self, target: str) -> None:
+    def __init__(
+        self,
+        target: str,
+        *,
+        fallback_email: str = "",
+        fallback_password: str = "",
+    ) -> None:
         self.target = target
+        # Used on hosts without Windows Credential Manager (containers, Linux
+        # servers). Windows deployments should keep using the Extraction
+        # screen instead of setting these environment variables.
+        self._fallback = (
+            StoredCredential(username=fallback_email.strip(), password=fallback_password)
+            if fallback_email.strip() and fallback_password
+            else None
+        )
 
     def read(self) -> StoredCredential | None:
-        return read_windows_credential(self.target)
+        stored = read_windows_credential(self.target)
+        if stored is not None:
+            return stored
+        return self._fallback
 
     def save(self, email: str, password: str) -> None:
         write_windows_credential(self.target, email.strip(), password)
