@@ -1,0 +1,18 @@
+.env
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+.idea/
+.work/
+*.log
+
+# Local OPUS extraction artefacts and generated business data
+outputs/
+data/
+exports/
+*.db
+*.sqlite
+*.sqlite3
