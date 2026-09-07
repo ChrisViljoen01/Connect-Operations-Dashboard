@@ -1,0 +1,13 @@
+# NiceGUI includes FastAPI, Uvicorn, Quasar and Apache ECharts.
+nicegui==3.14.0
+# PostgreSQL 13+ driver with a self-contained Windows binary package.
+psycopg[binary]==3.3.4
+# Optional local environment overrides; production secrets stay injected.
+python-dotenv>=1.0.0,<2.0
+# OPUS REST transport with explicit timeout and retry handling.
+requests==2.34.2
+truststore==0.10.4; sys_platform == "win32"
+# Read-only imports and write-only, bounded-memory XLSX exports.
+openpyxl==3.1.5
+# Branded, deterministic management PDF reports.
+reportlab==4.4.10

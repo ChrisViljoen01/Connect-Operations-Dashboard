@@ -1,0 +1,52 @@
+{
+  "source": "Pelagic SOH Report",
+  "report_generated_at": "2026-08-05T20:23:00+02:00",
+  "comparison_tolerance_tonnes": 0.01,
+  "orders": [
+    {
+      "order_reference": "KFTS26-10M",
+      "allocation_tonnes": 10000.0,
+      "total_soh_tonnes": 10000.0,
+      "locations": [
+        {
+          "site": "BCF",
+          "bay": "BCF Bay 1",
+          "soh_tonnes": 38.46
+        },
+        {
+          "site": "BC",
+          "bay": "Island View R",
+          "soh_tonnes": 9961.54
+        }
+      ]
+    },
+    {
+      "order_reference": "KFTS26-11MG",
+      "allocation_tonnes": 30000.0,
+      "total_soh_tonnes": 29968.48,
+      "locations": [
+        {
+          "site": "BCF",
+          "bay": "BCF Bay 5",
+          "soh_tonnes": 194.02
+        },
+        {
+          "site": "BC",
+          "bay": "Island View N",
+          "soh_tonnes": 20313.88
+        },
+        {
+          "site": "BC",
+          "bay": "Island View S",
+          "soh_tonnes": 9460.58
+        }
+      ]
+    }
+  ],
+  "excluded_manual_fields": [
+    "Total In",
+    "Total Out",
+    "Adjusted received"
+  ],
+  "exclusion_reason": "These movement totals reuse the same tonnes across successive Mine, BCF and BC legs and are not valid stock-on-hand comparators."
+}

@@ -1,0 +1,52 @@
+{
+  "source": "PELAGIC RECON.xlsx",
+  "received_date": "2026-08-06",
+  "orders": [
+    {
+      "order_reference": "KFTS26-11MG",
+      "mine_dispatch_tonnes": 30059.68,
+      "grounded_at_bc_tonnes": 29825.06,
+      "vessel_draft_tonnes": 28984.1,
+      "dg_tonnes": 28982.558,
+      "shore_scale_tonnes": 29857.0,
+      "manual_reported_variance_tonnes": -840.96,
+      "flows": [
+        {
+          "physical_leg": "Mine to BCF",
+          "dispatched_tonnes": 20255.6,
+          "received_tonnes": 20208.52
+        },
+        {
+          "physical_leg": "BCF to BC",
+          "dispatched_tonnes": 20024.18,
+          "received_tonnes": 20026.74
+        },
+        {
+          "physical_leg": "Mine to BC Direct",
+          "dispatched_tonnes": 9804.08,
+          "received_tonnes": 9798.32
+        }
+      ]
+    },
+    {
+      "order_reference": "KFTS26-10M",
+      "grounded_at_bc_tonnes": 9961.54,
+      "vessel_draft_tonnes": 9909.4,
+      "manual_reported_variance_tonnes": -52.92,
+      "manual_variance_basis": "Vessel draft less BCF dispatch",
+      "flows": [
+        {
+          "physical_leg": "BCF to BC",
+          "dispatched_tonnes": 9962.32,
+          "received_tonnes": 9961.54
+        }
+      ]
+    }
+  ],
+  "combined": {
+    "grounded_at_bc_tonnes": 39786.6,
+    "vessel_draft_tonnes": 38893.5,
+    "reported_variance_tonnes": -893.1,
+    "reported_variance_pct": 2.244725611135386
+  }
+}

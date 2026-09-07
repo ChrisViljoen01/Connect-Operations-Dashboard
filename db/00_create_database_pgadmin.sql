@@ -1,0 +1,1 @@
+CREATE DATABASE connect_logistics_ops OWNER connect_ops_owner;
