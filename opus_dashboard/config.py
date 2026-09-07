@@ -62,6 +62,11 @@ class Settings:
         "OPUS_APP_CREDENTIAL_TARGET",
         "ConnectLogisticsOps/OPUS/app.opus4business.com",
     ).strip()
+    # Fallback OPUS source login for hosts without Windows Credential Manager
+    # (containers, Linux hosts). Windows deployments should keep using the
+    # Extraction screen instead of setting these.
+    opus_source_email: str = os.getenv("OPUS_SOURCE_EMAIL", "").strip()
+    opus_source_password: str = os.getenv("OPUS_SOURCE_PASSWORD", "")
     opus_sync_minutes: int = _int_setting("OPUS_SYNC_MINUTES", 2)
     opus_full_sync_hours: int = _int_setting("OPUS_FULL_SYNC_HOURS", 24)
     opus_request_timeout: int = _int_setting("OPUS_REQUEST_TIMEOUT", 45)
@@ -104,6 +109,14 @@ class Settings:
     app_host: str = os.getenv("OPUS_APP_HOST", "127.0.0.1").strip()
     app_port: int = _int_setting("OPUS_APP_PORT", 8091)
     app_title: str = "Connect Logistics Operations Dashboard"
+    # When set, every page requires this shared password before showing any
+    # operational data. Required before exposing the app beyond a trusted
+    # internal network (e.g. any public or container deployment).
+    app_access_password: str = os.getenv("OPUS_APP_ACCESS_PASSWORD", "")
+    # NiceGUI signs browser session storage with this secret. A random value
+    # is generated per process when not set, which invalidates sessions across
+    # restarts; set an explicit value for multi-worker or persistent hosting.
+    app_storage_secret: str = os.getenv("OPUS_APP_STORAGE_SECRET", "")
 
     def __post_init__(self) -> None:
         _validate_date_window(self.opus_extract_from, self.opus_extract_to)

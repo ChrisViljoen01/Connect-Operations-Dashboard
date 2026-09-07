@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
+import hmac
 import os
 import tempfile
 from dataclasses import dataclass
@@ -8,7 +10,10 @@ from datetime import date, datetime
 from pathlib import Path
 from typing import Any, Callable
 
+from fastapi import Request
 from nicegui import app, background_tasks, ui
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import RedirectResponse
 
 from opus_dashboard.analytics import DataFilters, OpsFilters, StockFilters
 from opus_dashboard.charts import (
@@ -36,10 +41,72 @@ from opus_dashboard.xlsx_service import (
 
 
 repository = OperationsRepository(settings)
-opus_credentials = OpusCredentialStore(settings.opus_credential_target)
+opus_credentials = OpusCredentialStore(
+    settings.opus_credential_target,
+    fallback_email=settings.opus_source_email,
+    fallback_password=settings.opus_source_password,
+)
 opus_sync_engine = OpusSyncEngine(settings, repository, opus_credentials)
 opus_sync = SyncCoordinator(opus_sync_engine)
 app.add_static_files("/brand", str(BRAND_DIR))
+
+UNPROTECTED_PATH_PREFIXES = ("/login", "/_nicegui", "/brand", "/static")
+
+
+class _AccessPasswordMiddleware(BaseHTTPMiddleware):
+    """Gate every page behind a shared password when one is configured.
+
+    Inactive unless OPUS_APP_ACCESS_PASSWORD is set, so existing internal
+    network deployments keep their current behaviour unchanged.
+    """
+
+    async def dispatch(self, request: Request, call_next: Callable[..., Any]) -> Any:
+        path = request.url.path
+        if path.startswith(UNPROTECTED_PATH_PREFIXES):
+            return await call_next(request)
+        if app.storage.user.get("authenticated", False):
+            return await call_next(request)
+        return RedirectResponse(f"/login?next={path}")
+
+
+def _storage_secret() -> str:
+    if settings.app_storage_secret:
+        return settings.app_storage_secret
+    # A stable secret derived from the access password so restarts do not
+    # invalidate every open session. Set OPUS_APP_STORAGE_SECRET explicitly
+    # for multi-worker or production hosting instead of relying on this.
+    return hashlib.sha256(
+        f"opus-dashboard:{settings.app_access_password}".encode("utf-8")
+    ).hexdigest()
+
+
+if settings.app_access_password:
+    app.add_middleware(_AccessPasswordMiddleware)
+
+    @ui.page("/login")
+    def login_page(next: str = "/") -> None:  # noqa: A002 - matches query param name
+        if app.storage.user.get("authenticated", False):
+            ui.navigate.to(next)
+            return
+
+        def attempt_login() -> None:
+            if hmac.compare_digest(password_input.value or "", settings.app_access_password):
+                app.storage.user["authenticated"] = True
+                ui.navigate.to(next)
+            else:
+                ui.notify("Incorrect password.", type="negative")
+
+        with ui.card().classes("absolute-center").style("min-width: 320px"):
+            ui.label("Connect Logistics Operations Dashboard").classes(
+                "text-lg font-semibold"
+            )
+            ui.label("Enter the access password to continue.").classes(
+                "text-sm text-grey-7"
+            )
+            password_input = ui.input("Password", password=True).classes("w-full").on(
+                "keydown.enter", attempt_login
+            )
+            ui.button("Sign in", on_click=attempt_login).classes("w-full")
 
 NAV_ITEMS = (
     ("extraction", "Extraction", "cloud_download"),
@@ -4587,4 +4654,5 @@ def run() -> None:
         dark=False,
         language="en-US",
         prod_js=True,
+        storage_secret=_storage_secret() if settings.app_access_password else None,
     )

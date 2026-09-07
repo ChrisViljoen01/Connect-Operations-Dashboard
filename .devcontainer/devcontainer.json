@@ -1,0 +1,15 @@
+{
+  "name": "Connect Logistics Operations Dashboard",
+  "dockerComposeFile": "../docker-compose.yml",
+  "service": "app",
+  "workspaceFolder": "/app",
+  "shutdownAction": "stopCompose",
+  "forwardPorts": [8091],
+  "portsAttributes": {
+    "8091": {
+      "label": "OPUS Dashboard",
+      "onAutoForward": "openPreview"
+    }
+  },
+  "postCreateCommand": "pip install -r requirements.txt"
+}
