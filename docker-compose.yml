@@ -45,6 +45,9 @@ services:
     entrypoint: ["sh", "/app/scripts/setup_database.sh"]
 
   app:
+    # Testers can run the published build with `docker compose pull` instead
+    # of building locally; contributors use `docker compose up -d --build`.
+    image: ghcr.io/chrisviljoen01/connect-operations-dashboard:latest
     build: .
     restart: unless-stopped
     depends_on:

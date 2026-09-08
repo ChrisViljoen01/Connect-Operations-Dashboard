@@ -16,3 +16,6 @@ exports/
 *.db
 *.sqlite
 *.sqlite3
+
+# Environment-specific corporate proxy CAs (see certs/README.md)
+certs/*.crt

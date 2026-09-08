@@ -134,7 +134,6 @@ migration automatically, and starts the app.
 cp .env.example .env   # fill in OPUS_DB_APP_PASSWORD and OPUS_PG_ADMIN_PASSWORD
 docker compose up -d --build
 ```
-
 Open `http://<host>:8091`. Two settings matter specifically for non-Windows
 hosting:
 
@@ -150,6 +149,27 @@ hosting:
   internal-network deployments. `OPUS_APP_STORAGE_SECRET` signs session
   cookies and is derived automatically from the access password if not set
   explicitly; set it explicitly for a stable, long-lived deployment.
+
+### Running a published image (for testers)
+
+Every push to `main` publishes a ready-to-run image to GitHub Container
+Registry, so testers do not need to clone or build anything:
+
+```
+ghcr.io/chrisviljoen01/connect-operations-dashboard:latest
+```
+
+Pull it, or use the Compose stack with the published image instead of a local
+build by overriding the `app` service:
+
+```bash
+docker compose pull
+docker compose up -d
+```
+
+Tagged releases (`v1.2.3`) also publish `1.2.3`, `1.2` and short-SHA tags, so
+a specific build can be pinned for testing. The package is listed under the
+repository's **Packages** section on GitHub.
 
 ### Getting an actual shareable link
 

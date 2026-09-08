@@ -1,29 +1,32 @@
-#!/usr/bin/env bash
+#!/bin/sh
 # Linux/container equivalent of setup_database.ps1, for use inside the
 # docker-compose "migrate" service (postgres image, psql available).
 # Mirrors the same migration order and idempotency rules.
-set -euo pipefail
+#
+# POSIX sh only: the postgres:*-alpine image provides busybox ash, not bash.
+set -eu
 
 HOST_NAME="${OPUS_DB_HOST:-db}"
 PORT="${OPUS_DB_PORT:-5432}"
 ADMIN_USER="${OPUS_PG_ADMIN_USER:-postgres}"
-PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 DB_DIR="$PROJECT_ROOT/db"
 
-if [[ -z "${OPUS_PG_ADMIN_PASSWORD:-}" ]]; then
+if [ -z "${OPUS_PG_ADMIN_PASSWORD:-}" ]; then
   echo "Set OPUS_PG_ADMIN_PASSWORD before running setup." >&2
   exit 1
 fi
-if [[ -z "${OPUS_DB_APP_PASSWORD:-}" ]]; then
+if [ -z "${OPUS_DB_APP_PASSWORD:-}" ]; then
   echo "Set OPUS_DB_APP_PASSWORD before running setup." >&2
   exit 1
 fi
-if [[ ${#OPUS_DB_APP_PASSWORD} -lt 24 ]]; then
+if [ "${#OPUS_DB_APP_PASSWORD}" -lt 24 ]; then
   echo "OPUS_DB_APP_PASSWORD must contain at least 24 characters." >&2
   exit 1
 fi
 
-export PGPASSWORD="$OPUS_PG_ADMIN_PASSWORD"
+PGPASSWORD="$OPUS_PG_ADMIN_PASSWORD"
+export PGPASSWORD
 
 psql_admin() {
   psql --no-psqlrc --set ON_ERROR_STOP=on \
@@ -31,10 +34,12 @@ psql_admin() {
 }
 
 echo "Waiting for PostgreSQL at $HOST_NAME:$PORT..."
-for _ in $(seq 1 60); do
+attempt=0
+while [ "$attempt" -lt 60 ]; do
   if psql_admin --dbname postgres --command 'SELECT 1' >/dev/null 2>&1; then
     break
   fi
+  attempt=$((attempt + 1))
   sleep 2
 done
 
@@ -45,19 +50,19 @@ app_password_b64="$(printf '%s' "$OPUS_DB_APP_PASSWORD" | base64 | tr -d '\n')"
 } | psql_admin --dbname postgres --file -
 
 run_migration() {
-  local path="$1" label="$2"
-  echo "Applying $label migration ($path)..."
-  psql_admin --dbname connect_logistics_ops --file "$path"
+  echo "Applying $2 migration ($1)..."
+  psql_admin --dbname connect_logistics_ops --file "$1"
 }
 
 run_numbered_migration() {
-  local version="$1" path="$2" label="$3"
-  local applied
-  applied=$(psql_admin --dbname connect_logistics_ops --tuples-only --no-align \
-    --command "SELECT EXISTS (SELECT 1 FROM audit.schema_migrations WHERE version = '$version');" | tail -n1)
-  if [[ "$applied" == "t" ]]; then
+  version="$1"
+  path="$2"
+  label="$3"
+  applied="$(psql_admin --dbname connect_logistics_ops --tuples-only --no-align \
+    --command "SELECT EXISTS (SELECT 1 FROM audit.schema_migrations WHERE version = '$version');" | tail -n1)"
+  if [ "$applied" = "t" ]; then
     echo "Skipped $label migration $version; already applied"
-    return
+    return 0
   fi
   run_migration "$path" "$label"
 }
