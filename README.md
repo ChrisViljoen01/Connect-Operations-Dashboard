@@ -138,11 +138,17 @@ docker compose up -d --build
 Open `http://<host>:8091`. Two settings matter specifically for non-Windows
 hosting:
 
-- **`OPUS_SOURCE_EMAIL` / `OPUS_SOURCE_PASSWORD`** — Windows Credential
-  Manager does not exist in a container, so the OPUS source login falls back
-  to these environment variables when set. Entering the login through the
-  Extraction screen still works and is tried first wherever Credential
-  Manager is actually available.
+- **`OPUS_SOURCE_EMAIL` / `OPUS_SOURCE_PASSWORD`** — an optional
+  non-interactive fallback for the OPUS source login. Entering the login
+  through the Extraction screen works on every platform and takes precedence
+  over these. On Windows it is stored in Windows Credential Manager; on other
+  hosts, which have no equivalent OS vault, it is stored encrypted in
+  `OPUS_CREDENTIAL_FILE` (default `~/.connect-ops/opus_credentials.json`,
+  kept in a named Docker volume so it survives restarts). The password is
+  encrypted with a key derived from `OPUS_APP_STORAGE_SECRET`; if that is not
+  set, a random key file is generated beside it, which protects backups and
+  stray copies but not someone who can read both files as that user. Set
+  `OPUS_APP_STORAGE_SECRET` for a real deployment.
 - **`OPUS_APP_ACCESS_PASSWORD`** — the app has no login screen by default,
   which is fine on a trusted internal network but not once it is reachable
   by a public link. Setting this enables a `/login` gate (shared password,
@@ -150,6 +156,15 @@ hosting:
   internal-network deployments. `OPUS_APP_STORAGE_SECRET` signs session
   cookies and is derived automatically from the access password if not set
   explicitly; set it explicitly for a stable, long-lived deployment.
+
+### Networks that inspect TLS
+
+If the host sits behind a TLS-inspecting proxy or firewall, the container
+cannot reach PyPI or the OPUS API until that device's root CA is trusted.
+Drop the CA in `certs/` and rebuild; see [certs/README.md](certs/README.md),
+which also covers the case of a CA that OpenSSL rejects outright because its
+Basic Constraints are not marked critical. Note that the host and the
+container can be intercepted by different devices.
 
 ### Running a published image (for testers)
 

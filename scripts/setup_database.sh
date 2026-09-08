@@ -46,16 +46,37 @@ psql_admin() {
 echo "Waiting for PostgreSQL at $HOST_NAME:$PORT..."
 attempt=0
 connected=0
+last_error=""
 while [ "$attempt" -lt 60 ]; do
-  if psql_admin --dbname postgres --command 'SELECT 1' >/dev/null 2>&1; then
+  if last_error="$(psql_admin --dbname postgres --command 'SELECT 1' 2>&1 >/dev/null)"; then
     connected=1
     break
   fi
+  # An authentication failure is not a startup delay: retrying for two
+  # minutes only hides the real cause behind a misleading timeout. This
+  # happens when OPUS_PG_ADMIN_PASSWORD is changed after the database volume
+  # was first created, because the password is set once, at initialisation.
+  case "$last_error" in
+    *"password authentication failed"*|*"role \"$ADMIN_USER\" does not exist"*)
+      echo "PostgreSQL rejected the administrator login for '$ADMIN_USER'." >&2
+      echo "$last_error" >&2
+      echo >&2
+      echo "OPUS_PG_ADMIN_PASSWORD only takes effect when the database volume" >&2
+      echo "is first created; an existing volume keeps its original password." >&2
+      echo "Either restore the original value in .env, or discard the database" >&2
+      echo "and start again with:  docker compose down -v" >&2
+      echo "(docker compose down -v deletes all stored dashboard data.)" >&2
+      exit 1
+      ;;
+  esac
   attempt=$((attempt + 1))
   sleep 2
 done
 if [ "$connected" -ne 1 ]; then
   echo "Timed out waiting for PostgreSQL at $HOST_NAME:$PORT." >&2
+  if [ -n "$last_error" ]; then
+    echo "Last connection error: $last_error" >&2
+  fi
   exit 1
 fi
 
