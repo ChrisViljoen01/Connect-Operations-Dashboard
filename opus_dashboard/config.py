@@ -67,6 +67,11 @@ class Settings:
     # Extraction screen instead of setting these.
     opus_source_email: str = os.getenv("OPUS_SOURCE_EMAIL", "").strip()
     opus_source_password: str = os.getenv("OPUS_SOURCE_PASSWORD", "")
+    # Where the encrypted OPUS login is stored on hosts without a Windows
+    # vault. Ignored on Windows, which uses Credential Manager instead. The
+    # default lives under the account's home directory so it is never written
+    # into the project directory or an image layer.
+    opus_credential_file: str = os.getenv("OPUS_CREDENTIAL_FILE", "").strip()
     opus_sync_minutes: int = _int_setting("OPUS_SYNC_MINUTES", 2)
     opus_full_sync_hours: int = _int_setting("OPUS_FULL_SYNC_HOURS", 24)
     opus_request_timeout: int = _int_setting("OPUS_REQUEST_TIMEOUT", 45)

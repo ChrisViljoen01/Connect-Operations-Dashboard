@@ -45,6 +45,8 @@ opus_credentials = OpusCredentialStore(
     settings.opus_credential_target,
     fallback_email=settings.opus_source_email,
     fallback_password=settings.opus_source_password,
+    credential_file=settings.opus_credential_file,
+    storage_secret=settings.app_storage_secret,
 )
 opus_sync_engine = OpusSyncEngine(settings, repository, opus_credentials)
 opus_sync = SyncCoordinator(opus_sync_engine)
@@ -1634,7 +1636,7 @@ async def dashboard() -> None:
                                 f"OPUS login saved for {saved.username}"
                             ).classes("credential-account font-bold")
                             ui.label(
-                                "Password is encrypted in Windows Credential Manager "
+                                f"Password is encrypted in {opus_credentials.backend} "
                                 "and is never written to this project or database."
                             ).classes("section-subtitle")
                         else:

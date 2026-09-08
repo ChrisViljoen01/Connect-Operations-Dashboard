@@ -4,10 +4,12 @@ import asyncio
 import hashlib
 import json
 import re
+import sys
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import asdict, dataclass
 from datetime import date, datetime, timedelta, timezone
+from pathlib import Path
 from typing import Any, Callable, Iterable
 from uuid import UUID
 
@@ -15,6 +17,10 @@ import psycopg
 from psycopg.types.json import Jsonb
 
 from opus_dashboard.config import Settings
+from opus_dashboard.credential_file import (
+    FileCredentialStore,
+    default_credential_path,
+)
 from opus_dashboard.credentials import (
     StoredCredential,
     delete_windows_credential,
@@ -159,12 +165,22 @@ class WorkflowSelection:
 
 
 class OpusCredentialStore:
+    """Saves the OPUS login in the best vault the host actually provides.
+
+    Windows uses Credential Manager. Other hosts have no equivalent OS vault
+    available here, so the login is written to an encrypted file instead (see
+    credential_file.py). Environment credentials, when supplied, remain a
+    read-only fallback on any platform.
+    """
+
     def __init__(
         self,
         target: str,
         *,
         fallback_email: str = "",
         fallback_password: str = "",
+        credential_file: str = "",
+        storage_secret: str = "",
     ) -> None:
         self.target = target
         # Used on hosts without Windows Credential Manager (containers, Linux
@@ -175,17 +191,42 @@ class OpusCredentialStore:
             if fallback_email.strip() and fallback_password
             else None
         )
+        self._file_store: FileCredentialStore | None = None
+        if sys.platform != "win32":
+            self._file_store = FileCredentialStore(
+                path=(
+                    Path(credential_file)
+                    if credential_file
+                    else default_credential_path()
+                ),
+                secret=storage_secret,
+            )
+
+    @property
+    def backend(self) -> str:
+        """Where this host stores the login, for display in the interface."""
+        if self._file_store is None:
+            return "Windows Credential Manager"
+        return f"an encrypted file at {self._file_store.path}"
 
     def read(self) -> StoredCredential | None:
-        stored = read_windows_credential(self.target)
+        if self._file_store is not None:
+            stored = self._file_store.read()
+        else:
+            stored = read_windows_credential(self.target)
         if stored is not None:
             return stored
         return self._fallback
 
     def save(self, email: str, password: str) -> None:
+        if self._file_store is not None:
+            self._file_store.save(email, password)
+            return
         write_windows_credential(self.target, email.strip(), password)
 
     def delete(self) -> bool:
+        if self._file_store is not None:
+            return self._file_store.delete()
         return delete_windows_credential(self.target)
 
 

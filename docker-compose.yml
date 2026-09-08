@@ -68,8 +68,14 @@ services:
       OPUS_EXTRACT_FROM: ${OPUS_EXTRACT_FROM:-2026-06-29}
       OPUS_AUTO_SYNC: ${OPUS_AUTO_SYNC:-true}
       OPUS_APP_PORT: "8091"
+    volumes:
+      # Keeps the OPUS login (encrypted) across restarts and image updates.
+      # Without this the login must be re-entered every time the container is
+      # recreated. It is a named volume, so nothing lands in the source tree.
+      - opus_app_state:/home/appuser/.connect-ops
     ports:
       - "${OPUS_APP_PORT:-8091}:8091"
 
 volumes:
   opus_db_data:
+  opus_app_state:
