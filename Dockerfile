@@ -10,6 +10,14 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
+# Optional: trust corporate root CAs when building behind a TLS-inspecting
+# proxy or firewall. certs/ holds only a README on a normal network, so this
+# is a no-op by default. See certs/README.md.
+COPY certs/ /usr/local/share/ca-certificates/
+RUN update-ca-certificates
+ENV REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt \
+    SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
+
 # psycopg[binary] ships its own libpq; no extra system packages are required.
 COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
