@@ -179,18 +179,54 @@ repository's **Packages** section on GitHub.
 
 ### Getting an actual shareable link
 
-Building the container image does not, by itself, put a URL on the internet —
-that requires a host. Two practical options:
+The application is a long-running server with a database, so a link means
+hosting it somewhere. There are three options, in increasing order of
+permanence.
 
-1. **GitHub Codespaces** (`.devcontainer/devcontainer.json` is included) —
-   open this repository as a Codespace, let the Compose stack start, then use
-   the **Ports** panel to set port `8091`'s visibility to *Public* to get a
-   shareable `https://…app.github.dev` URL. Set `OPUS_APP_ACCESS_PASSWORD`
-   first if you do this, since the port is then open to anyone with the link.
-2. **Your own server or cloud VM** — run the `docker compose up -d --build`
-   command above on any Docker-capable host you control, then point a domain
-   or reverse proxy (for TLS) at port 8091.
+#### 1. A temporary link from this machine (fastest, good for testing)
 
-Neither this repository nor an automated session can provision cloud hosting
-or a tunnel on your behalf without credentials for that provider; the steps
-above are what turns the container into a link once you choose where it runs.
+```powershell
+.\scripts\share_public_link.ps1
+```
+
+This starts the stack and opens a Cloudflare quick tunnel, then prints a
+public `https://….trycloudflare.com` URL that anyone can open. Stop it with
+`.\scripts\share_public_link.ps1 -Stop`.
+
+Understand the trade-offs before relying on it:
+
+- The dashboard is served **from this machine**. The link works only while
+  this machine is on, awake, and connected. Closing the laptop kills it.
+- **The URL changes every restart**, so it cannot be bookmarked or published
+  anywhere durable.
+- The script refuses to run unless `OPUS_APP_ACCESS_PASSWORD` is set, because
+  the link is reachable by anyone on the internet who has it.
+
+This is a demo and test-round tool, not hosting.
+
+#### 2. A stable link, still from your own machine or server
+
+A free Cloudflare account plus a domain turns the quick tunnel into a *named*
+tunnel with a fixed hostname such as `ops.yourcompany.com`. The stack is
+unchanged; only the tunnel is configured differently, and Cloudflare
+documents this under "Cloudflare Tunnel". This fixes the changing URL, but
+the app is still only up while the host machine is.
+
+#### 3. Real hosting (what "all users can use it" ultimately needs)
+
+Run the same Compose stack on a machine that is always on:
+
+```bash
+docker compose pull
+docker compose up -d
+```
+
+Any small cloud VM works (Azure, AWS, DigitalOcean, Hetzner), as does an
+internal always-on server, which is often the better fit here because the
+data is operational and internal. Put a reverse proxy in front for TLS and a
+fixed hostname. Because the image is published to GHCR, the host only needs
+`docker-compose.yml` and `.env`.
+
+For anything beyond a test round, prefer option 3, and keep
+`OPUS_APP_ACCESS_PASSWORD` set unless the app sits on a trusted internal
+network.
