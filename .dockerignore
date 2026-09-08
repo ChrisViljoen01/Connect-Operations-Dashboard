@@ -18,6 +18,9 @@ exports/
 *.sqlite3
 .env
 tests/
-db/
-scripts/
 README.md
+
+# db/ and scripts/setup_database.sh are deliberately NOT excluded: they are
+# copied into the image so the migration step needs nothing from a clone.
+scripts/*.ps1
+scripts/*.py

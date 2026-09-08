@@ -30,7 +30,11 @@ services:
       retries: 20
 
   migrate:
-    image: postgres:17-alpine
+    # Runs from the application image, which carries db/ and the setup script.
+    # Nothing is bind mounted, so a deployment needs only this file and .env.
+    image: ghcr.io/chrisviljoen01/connect-operations-dashboard:latest
+    build: .
+    restart: "no"
     depends_on:
       db:
         condition: service_healthy
@@ -39,9 +43,6 @@ services:
       OPUS_DB_PORT: "5432"
       OPUS_PG_ADMIN_PASSWORD: ${OPUS_PG_ADMIN_PASSWORD:?set OPUS_PG_ADMIN_PASSWORD}
       OPUS_DB_APP_PASSWORD: ${OPUS_DB_APP_PASSWORD:?set OPUS_DB_APP_PASSWORD}
-    volumes:
-      - ./db:/app/db:ro
-      - ./scripts/setup_database.sh:/app/scripts/setup_database.sh:ro
     entrypoint: ["sh", "/app/scripts/setup_database.sh"]
 
   app:
