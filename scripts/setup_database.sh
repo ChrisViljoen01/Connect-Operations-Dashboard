@@ -25,6 +25,16 @@ if [ "${#OPUS_DB_APP_PASSWORD}" -lt 24 ]; then
   exit 1
 fi
 
+# Fail loudly if the migration files are missing. Previously these were bind
+# mounted, and a deployment without a repository clone silently received an
+# empty directory, so this script did nothing, exited 0, and the application
+# started against a database with no schema.
+if [ ! -f "$DB_DIR/00_bootstrap.psql" ]; then
+  echo "Migration files not found under $DB_DIR." >&2
+  echo "Expected them to be baked into the image; check the Dockerfile COPY." >&2
+  exit 1
+fi
+
 PGPASSWORD="$OPUS_PG_ADMIN_PASSWORD"
 export PGPASSWORD
 
@@ -35,13 +45,19 @@ psql_admin() {
 
 echo "Waiting for PostgreSQL at $HOST_NAME:$PORT..."
 attempt=0
+connected=0
 while [ "$attempt" -lt 60 ]; do
   if psql_admin --dbname postgres --command 'SELECT 1' >/dev/null 2>&1; then
+    connected=1
     break
   fi
   attempt=$((attempt + 1))
   sleep 2
 done
+if [ "$connected" -ne 1 ]; then
+  echo "Timed out waiting for PostgreSQL at $HOST_NAME:$PORT." >&2
+  exit 1
+fi
 
 app_password_b64="$(printf '%s' "$OPUS_DB_APP_PASSWORD" | base64 | tr -d '\n')"
 {

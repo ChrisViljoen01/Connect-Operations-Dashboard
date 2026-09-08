@@ -128,7 +128,8 @@ Windows workstation — a shared server, a VM, or a GitHub Codespace so it is
 reachable by link — a self-contained Docker Compose stack is included:
 `Dockerfile`, `docker-compose.yml`, and `scripts/setup_database.sh` (a Linux
 port of `setup_database.ps1`). It provisions PostgreSQL, applies every
-migration automatically, and starts the app.
+migration automatically, and starts the app. The container runs as an
+unprivileged user and reports readiness through a Docker healthcheck.
 
 ```bash
 cp .env.example .env   # fill in OPUS_DB_APP_PASSWORD and OPUS_PG_ADMIN_PASSWORD
@@ -153,18 +154,23 @@ hosting:
 ### Running a published image (for testers)
 
 Every push to `main` publishes a ready-to-run image to GitHub Container
-Registry, so testers do not need to clone or build anything:
+Registry. Testers need only `docker-compose.yml` and a `.env` file — no clone
+and no build, because the image carries the SQL migrations and a psql client
+and runs the migration step itself:
+
+```bash
+curl -O https://raw.githubusercontent.com/ChrisViljoen01/Connect-Operations-Dashboard/main/docker-compose.yml
+curl -o .env https://raw.githubusercontent.com/ChrisViljoen01/Connect-Operations-Dashboard/main/.env.example
+# edit .env: OPUS_PG_ADMIN_PASSWORD, OPUS_DB_APP_PASSWORD (24+ chars),
+# and OPUS_APP_ACCESS_PASSWORD if the host is reachable by others
+docker compose pull
+docker compose up -d
+```
+
+The image is published as:
 
 ```
 ghcr.io/chrisviljoen01/connect-operations-dashboard:latest
-```
-
-Pull it, or use the Compose stack with the published image instead of a local
-build by overriding the `app` service:
-
-```bash
-docker compose pull
-docker compose up -d
 ```
 
 Tagged releases (`v1.2.3`) also publish `1.2.3`, `1.2` and short-SHA tags, so
