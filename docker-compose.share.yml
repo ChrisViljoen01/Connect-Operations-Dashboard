@@ -1,0 +1,29 @@
+# Adds a public HTTPS link to the stack, so people outside this machine can
+# reach the dashboard without a VPN or a server.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.share.yml up -d
+#   docker compose logs share | grep trycloudflare.com
+#
+# Read this before using it:
+#
+# * The dashboard is served straight from this machine. It stays up only
+#   while this machine is on, awake, and connected. It is ideal for a demo or
+#   a test round, and unsuitable as permanent hosting.
+# * The URL is random and changes every restart. A stable address needs a
+#   named Cloudflare tunnel (a free Cloudflare account plus a domain), or
+#   real hosting. See the deployment section of README.md.
+# * OPUS_APP_ACCESS_PASSWORD MUST be set. Anyone with the link can otherwise
+#   read live operational data and trigger extraction. Compose refuses to
+#   start this file without it.
+services:
+  share:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    depends_on:
+      app:
+        condition: service_healthy
+    command: tunnel --no-autoupdate --url http://app:8091
+
+  app:
+    environment:
+      OPUS_APP_ACCESS_PASSWORD: ${OPUS_APP_ACCESS_PASSWORD:?refusing to publish a public link without OPUS_APP_ACCESS_PASSWORD set}
